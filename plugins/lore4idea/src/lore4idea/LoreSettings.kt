@@ -1,6 +1,7 @@
 // Copyright 2000-2026 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package lore4idea
 
+import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.SimplePersistentStateComponent
@@ -18,11 +19,16 @@ import com.intellij.ui.dsl.builder.panel
 @State(name = "LoreSettings", storages = [Storage("lore.xml")])
 internal class LoreSettings : SimplePersistentStateComponent<LoreSettings.State>(State()) {
   class State : BaseState() {
-    var executable by string("lore")
+    var executable by string(detectLoreExecutable())
     var timeoutSeconds by property(120)
     var historyLimit by property(200)
     var lastServerUrl by string()
   }
+}
+
+@Suppress("UnstableApiUsage")
+internal fun detectLoreExecutable(pathVariable: String? = PathEnvironmentVariableUtil.getPathVariableValue()): String {
+  return PathEnvironmentVariableUtil.findFirst("lore", pathVariable)?.toString() ?: "lore"
 }
 
 internal class LoreConfigurable(private val project: Project) : BoundConfigurable(LoreBundle.message("lore.name")) {
