@@ -2,7 +2,17 @@
   <id>lore4idea</id>
   <name>Lore</name>
   <version>0.1.0</version>
-  <description>Integrates the Lore version control system with the IDE.</description>
+  <description><![CDATA[
+    Provides integration with the <a href="https://github.com/EpicGames/lore">Lore version control system</a>.
+    <ul>
+      <li>Detects Lore repositories and shows local changes</li>
+      <li>Commits, pushes, synchronizes, reverts, and resets files</li>
+      <li>Creates, switches, merges, deletes, and archives local and remote branches</li>
+      <li>Shows revision history, commit details, changed files, and file differences</li>
+      <li>Authenticates the Lore CLI through browser login</li>
+    </ul>
+    <p>Set the Lore executable under <b>Settings | Version Control | Lore</b>.</p>
+  ]]></description>
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.vcs</depends>
   <resource-bundle>messages.LoreBundle</resource-bundle>
