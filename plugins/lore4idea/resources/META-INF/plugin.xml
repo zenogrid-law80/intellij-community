@@ -1,0 +1,42 @@
+<idea-plugin>
+  <id>lore4idea</id>
+  <name>Lore</name>
+  <version>0.1.0</version>
+  <description>Integrates the Lore version control system with the IDE.</description>
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.vcs</depends>
+  <resource-bundle>messages.LoreBundle</resource-bundle>
+  <extensions defaultExtensionNs="com.intellij">
+    <vcs name="Lore" vcsClass="lore4idea.LoreVcs" displayName="Lore" administrativeAreaName=".lore"/>
+    <vcsRootChecker implementation="lore4idea.LoreRootChecker"/>
+    <logProvider implementation="lore4idea.log.LoreLogProvider"/>
+    <projectConfigurable id="vcs.Lore" parentId="project.propVCSSupport.Mappings"
+                         bundle="messages.LoreBundle" key="lore.name" instance="lore4idea.LoreConfigurable"/>
+    <notificationGroup id="Lore" displayType="BALLOON" key="lore.name" bundle="messages.LoreBundle"/>
+  </extensions>
+  <actions>
+    <action id="main.toolbar.lore.Branches" class="lore4idea.actions.LoreToolbarWidgetAction">
+      <add-to-group group-id="MainToolbarVCSGroup" anchor="first"/>
+    </action>
+    <group id="Lore.Menu" class="lore4idea.actions.LoreActionGroup" popup="true">
+      <reference ref="CheckinFiles"/>
+      <reference ref="ChangesView.AddUnversioned"/>
+      <reference ref="ChangesView.Revert"/>
+      <separator/>
+      <reference ref="Compare.SameVersion"/>
+      <reference ref="Vcs.ShowTabbedFileHistory"/>
+      <separator/>
+      <action id="Lore.Login" class="lore4idea.actions.LoreLoginAction"/>
+      <action id="Lore.Logout" class="lore4idea.actions.LoreLogoutAction"/>
+      <action id="Lore.Branches" class="lore4idea.actions.LoreSwitchBranchAction"/>
+      <action id="Lore.CreateBranch" class="lore4idea.actions.LoreCreateBranchAction"/>
+      <action id="Lore.Sync" class="lore4idea.actions.LoreSyncAction"/>
+      <action id="Lore.Push" class="lore4idea.actions.LorePushAction"/>
+      <action id="Lore.Refresh" class="lore4idea.actions.LoreRefreshAction"/>
+      <action id="Lore.DiscardUnpushed" class="lore4idea.actions.LoreDiscardUnpushedAction"/>
+      <action id="Lore.ResetAll" class="lore4idea.actions.LoreResetAllAction"/>
+      <add-to-group group-id="VcsGroup" anchor="last"/>
+      <add-to-group group-id="VcsGlobalGroup" anchor="last"/>
+    </group>
+  </actions>
+</idea-plugin>

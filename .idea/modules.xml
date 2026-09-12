@@ -2275,6 +2275,7 @@
       <module fileurl="file://$PROJECT_DIR$/plugins/gitlab/gitlab-yaml/intellij.vcs.gitlab.yaml.tests.iml" filepath="$PROJECT_DIR$/plugins/gitlab/gitlab-yaml/intellij.vcs.gitlab.yaml.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/plugins/hg4idea/intellij.vcs.hg.iml" filepath="$PROJECT_DIR$/plugins/hg4idea/intellij.vcs.hg.iml" />
       <module fileurl="file://$PROJECT_DIR$/plugins/hg4idea/intellij.vcs.hg.tests.iml" filepath="$PROJECT_DIR$/plugins/hg4idea/intellij.vcs.hg.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/plugins/lore4idea/intellij.vcs.lore.iml" filepath="$PROJECT_DIR$/plugins/lore4idea/intellij.vcs.lore.iml" />
       <module fileurl="file://$PROJECT_DIR$/plugins/svn4idea/intellij.vcs.svn.iml" filepath="$PROJECT_DIR$/plugins/svn4idea/intellij.vcs.svn.iml" />
       <module fileurl="file://$PROJECT_DIR$/plugins/svn4idea/intellij.vcs.svn.tests.iml" filepath="$PROJECT_DIR$/plugins/svn4idea/intellij.vcs.svn.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/plugins/webp/intellij.webp.iml" filepath="$PROJECT_DIR$/plugins/webp/intellij.webp.iml" />
