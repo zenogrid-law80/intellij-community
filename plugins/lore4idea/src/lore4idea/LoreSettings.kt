@@ -26,9 +26,9 @@ internal class LoreSettings : SimplePersistentStateComponent<LoreSettings.State>
   }
 }
 
-@Suppress("UnstableApiUsage")
+@Suppress("DEPRECATION")
 internal fun detectLoreExecutable(pathVariable: String? = PathEnvironmentVariableUtil.getPathVariableValue()): String {
-  return PathEnvironmentVariableUtil.findFirst("lore", pathVariable)?.toString() ?: "lore"
+  return PathEnvironmentVariableUtil.findInPath("lore", pathVariable, null)?.absolutePath ?: "lore"
 }
 
 internal class LoreConfigurable(private val project: Project) : BoundConfigurable(LoreBundle.message("lore.name")) {
