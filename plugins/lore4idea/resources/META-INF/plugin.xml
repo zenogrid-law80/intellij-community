@@ -43,6 +43,7 @@
       <action id="Lore.Sync" class="lore4idea.actions.LoreSyncAction"/>
       <action id="Lore.Push" class="lore4idea.actions.LorePushAction"/>
       <action id="Lore.Refresh" class="lore4idea.actions.LoreRefreshAction"/>
+      <action id="Lore.View" class="lore4idea.actions.LoreViewAction"/>
       <action id="Lore.DiscardUnpushed" class="lore4idea.actions.LoreDiscardUnpushedAction"/>
       <action id="Lore.ResetAll" class="lore4idea.actions.LoreResetAllAction"/>
       <add-to-group group-id="VcsGroup" anchor="last"/>

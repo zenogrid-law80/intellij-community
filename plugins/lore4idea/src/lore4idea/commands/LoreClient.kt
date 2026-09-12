@@ -9,6 +9,7 @@ import com.intellij.platform.eel.provider.getEelDescriptor
 import com.intellij.platform.eel.provider.toEelApi
 import lore4idea.LoreBundle
 import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 
 internal fun isValidLoreServerUrl(value: String): Boolean =
@@ -214,6 +215,64 @@ internal class LoreClient(val root: Path, private val executor: LoreExecutor) {
   suspend fun sync() {
     requireClean()
     command("sync")
+  }
+
+  fun view(): String? = LoreViewFile(root).read()
+
+  suspend fun viewFolders(parent: String, revision: String): LoreFolderListing {
+    if (parent.isNotEmpty()) LoreProtocol.resolvePath(root, parent)
+    if (revision.all { it == '0' }) return LoreFolderListing(revision, emptyList())
+    val arguments = mutableListOf("--cache", "repository", "dump", "--revision", revision,
+                                  "--max-depth", if (parent.isEmpty()) "1" else "2")
+    if (parent.isNotEmpty()) arguments.add("--path=$parent")
+    return parseLoreFolders(root, parent, revision, command(*arguments.toTypedArray()))
+  }
+
+  suspend fun saveFolderSelections(revision: String, changes: List<LoreFolderSelection>, apply: Boolean) {
+    val latest = view()
+    val rules = LoreFolderRules.merge(latest.orEmpty(), changes)
+    if (!apply && rules == latest.orEmpty()) return
+    saveView(latest, rules, apply, revision)
+  }
+
+  suspend fun saveView(expected: String?, content: String, apply: Boolean, expectedRevision: String? = null) {
+    val view = LoreViewFile(root)
+    if (view.read() != expected) throw VcsException(LoreBundle.message("error.view.changed"))
+    val current = if (apply || expectedRevision != null) status(scan = apply) else null
+    if (expectedRevision != null && current?.revision != expectedRevision) {
+      throw VcsException(LoreBundle.message("error.view.revision"))
+    }
+    if (apply && current != null) checkViewChanges(current)
+    view.write(expected, content)
+    var validated = false
+    try {
+      val updated = status(scan = apply)
+      if (apply && current != null) {
+        if (updated.revision != current.revision || updated.branch != current.branch) {
+          throw VcsException(LoreBundle.message("error.view.revision"))
+        }
+        checkViewChanges(updated)
+      }
+      validated = true
+    }
+    finally {
+      if (!validated && view.read() == content) view.write(content, expected)
+    }
+    if (!apply || current == null || current.revision.all { it == '0' }) return
+    try {
+      command("--cache", "sync", "--reset", current.revision)
+    }
+    catch (error: VcsException) {
+      throw VcsException(LoreBundle.message("error.view.apply", error.message.orEmpty()), error)
+    }
+  }
+
+  private fun checkViewChanges(status: LoreStatus) {
+    if (status.merged || status.files.any {
+        it.action != "delete" || it.staged || it.conflict || Files.exists(LoreProtocol.resolvePath(root, it.path), NOFOLLOW_LINKS)
+      }) {
+      throw VcsException(LoreBundle.message("error.view.dirty"))
+    }
   }
 
   suspend fun push() {

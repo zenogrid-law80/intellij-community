@@ -93,6 +93,7 @@ internal class LoreToolbarWidgetAction : ExpandableComboAction(), DumbAware {
     manager.getAction("Lore.DiscardUnpushed")?.let(group::add)
     group.add(LoreResetAllAction(root))
     group.add(LoreRefreshAction(root))
+    group.add(LoreViewAction(root))
     if (merging) group.add(LoreAbortMergeAction(root))
     group.addSeparator()
     val createBranch = LoreCreateBranchAction(root)

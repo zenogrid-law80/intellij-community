@@ -4,8 +4,12 @@ package lore4idea
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import lore4idea.commands.EelLoreExecutor
+import lore4idea.commands.LoreFolderRules
+import lore4idea.commands.LoreFolderSelection
+import lore4idea.commands.LoreFolderState
 import lore4idea.commands.LoreClient
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -74,6 +78,60 @@ internal class LoreCliTest {
     assertTrue(client.status().files.isEmpty())
     assertEquals("feature\n", Files.readString(root.resolve("feature.txt")))
     assertEquals("main\n", Files.readString(root.resolve("main.txt")))
+  }
+
+  @Test
+  fun `view rules retain excluded files and restore newly included files`() = timeoutRunBlocking(timeout = 60.seconds) {
+    val client = LoreClient(root, EelLoreExecutor(System.getProperty("lore.executable"), 30))
+    client.command("--offline", "repository", "create", "lore://localhost/lore4idea-view-test")
+    Files.writeString(root.resolve("keep.txt"), "keep\n")
+    Files.writeString(root.resolve("other.txt"), "other\n")
+    client.commit(setOf("keep.txt", "other.txt"), "Initial")
+    val revision = client.status().revision
+    val rules = "# Only keep.txt\n**\n!keep.txt\n"
+    client.saveView(null, rules, apply = true)
+    assertEquals(rules, client.view())
+    assertTrue(Files.exists(root.resolve("other.txt")))
+    Files.delete(root.resolve("other.txt"))
+    assertTrue(client.status().files.isEmpty())
+    client.saveView(rules, "", apply = false)
+    assertFalse(Files.exists(root.resolve("other.txt")))
+    client.saveView("", "", apply = true)
+    assertEquals("other\n", Files.readString(root.resolve("other.txt")))
+    assertEquals(revision, client.status().revision)
+    assertFalse(client.status().merged)
+    assertTrue(client.status().files.isEmpty())
+  }
+
+  @Test
+  fun `folder queries include absent paths and selections merge external rules`() = timeoutRunBlocking(timeout = 60.seconds) {
+    val client = LoreClient(root, EelLoreExecutor(System.getProperty("lore.executable"), 30))
+    client.command("--offline", "repository", "create", "lore://localhost/lore4idea-folders-test")
+    val files = setOf("Source/main.kt", "Assets/한 글 [art]/file.txt", "Assets/Other/file.txt")
+    for (path in files) {
+      val file = root.resolve(path)
+      Files.createDirectories(file.parent)
+      Files.writeString(file, path)
+    }
+    client.commit(files, "Initial")
+    val revision = client.status().revision
+    client.saveView(null, "**\n!/Source/**\n", apply = false)
+    Files.delete(root.resolve("Assets/한 글 [art]/file.txt"))
+    Files.delete(root.resolve("Assets/한 글 [art]"))
+    assertEquals(listOf("Assets", "Source"), client.viewFolders("", revision).folders)
+    assertEquals(listOf("Assets/Other", "Assets/한 글 [art]"), client.viewFolders("Assets", revision).folders)
+    assertTrue(client.viewFolders("Assets/Other", revision).folders.isEmpty())
+    assertFalse(Files.exists(root.resolve("Assets/한 글 [art]")))
+    val external = "# external edit\n**\n!/Source/**\n"
+    Files.writeString(root.resolve(".lore/view"), external)
+    client.saveFolderSelections(revision, listOf(LoreFolderSelection("Assets/한 글 [art]", true)), apply = false)
+    assertTrue(client.view().orEmpty().startsWith(external))
+    assertFalse(Files.exists(root.resolve("Assets/한 글 [art]")))
+    client.saveFolderSelections(revision, emptyList(), apply = true)
+    assertEquals("Assets/한 글 [art]/file.txt", Files.readString(root.resolve("Assets/한 글 [art]/file.txt")))
+    assertEquals(revision, client.status().revision)
+    client.saveFolderSelections(revision, listOf(LoreFolderSelection("", true)), apply = false)
+    assertEquals(LoreFolderState.INCLUDED, LoreFolderRules.state(client.view().orEmpty(), "Assets/Other"))
   }
 
   private suspend fun <T> step(name: String, action: suspend () -> T): T = try {
