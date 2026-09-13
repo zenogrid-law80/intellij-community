@@ -60,6 +60,8 @@ internal data class LoreLogEntry(
   val changes: MutableList<LoreLogChange> = mutableListOf(),
 )
 
+internal data class LoreLogResponse(val entries: List<LoreLogEntry>, val userNames: Map<String, String>)
+
 internal data class LoreLogChange(val path: String, val action: String)
 
 internal data class LoreSyncCounts(val branch: String, val incoming: Int, val outgoing: Int)
@@ -166,6 +168,8 @@ internal object LoreProtocol {
     }
     return entries
   }
+
+  fun logResponse(events: List<LoreEvent>): LoreLogResponse = LoreLogResponse(log(events), users(events))
 
   private fun addMetadata(entry: LoreLogEntry?, data: JsonObject) {
     if (entry == null) return

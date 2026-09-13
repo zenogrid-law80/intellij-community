@@ -136,7 +136,9 @@ internal class LoreLogProvider(private val project: Project) : VcsLogProvider {
     val entries = LinkedHashMap<String, LoreLogEntry>()
     val containingBranches = linkedMapOf<String, MutableSet<String>>()
     for (branch in branches) {
-      for (entry in log(branch.name, requestedLimit)) {
+      val history = logWithUserNames(branch.name, requestedLimit)
+      userNames.computeIfAbsent(this.root) { ConcurrentHashMap() }.putAll(history.userNames)
+      for (entry in history.entries) {
         entries.putIfAbsent(entry.revision, entry)
         containingBranches.computeIfAbsent(entry.revision) { linkedSetOf() }.add(branch.name)
       }

@@ -305,8 +305,10 @@ internal class LoreClient(val root: Path, private val executor: LoreExecutor) {
     return LoreProtocol.history(command("--offline", "file", "history", "--", "./$path", limit.toString()))
   }
 
-  suspend fun log(branch: String, limit: Int): List<LoreLogEntry> = LoreProtocol.log(
-    commandAccepting("revisionHistory", "--offline", "history", "--branch", branch, limit.toString())
+  suspend fun log(branch: String, limit: Int): List<LoreLogEntry> = logWithUserNames(branch, limit).entries
+
+  suspend fun logWithUserNames(branch: String, limit: Int): LoreLogResponse = LoreProtocol.logResponse(
+    commandAccepting("revisionHistory", "--cache", "history", "--branch", branch, limit.toString())
   )
 
   suspend fun revision(revision: String): LoreLogEntry {

@@ -145,6 +145,19 @@ internal class LoreProtocolTest {
     assertEquals(mapOf("user-id" to "Test User"), LoreProtocol.users(LoreProtocol.events(output)))
   }
 
+  @Test
+  fun `reads log users resolved by the history command`() {
+    val output = """
+      {"tagName":"revisionHistoryEntry","data":{"revision":"a","parent":[]}}
+      {"tagName":"metadata","data":{"key":"created-by","value":{"tagName":"string","data":"user-id"}}}
+      {"tagName":"authUserInfo","data":{"id":"user-id","name":"Test User"}}
+      $complete
+    """.trimIndent()
+    val response = LoreProtocol.logResponse(LoreProtocol.events(output))
+    assertEquals("a", response.entries.single().revision)
+    assertEquals(mapOf("user-id" to "Test User"), response.userNames)
+  }
+
   companion object {
     const val complete = """{"tagName":"complete","data":{"status":0}}"""
 
