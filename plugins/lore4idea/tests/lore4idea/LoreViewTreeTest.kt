@@ -25,11 +25,17 @@ internal class LoreViewTreeTest {
   fun `expansion loads children and selection applies to unloaded descendants`() = timeoutRunBlocking {
     withContext(Dispatchers.EDT) {
       val requested = mutableListOf<String>()
+      val ruleUpdates = mutableListOf<String>()
       lateinit var view: LoreViewTree
-      view = LoreViewTree("*.tmp\n", listOf("src")) {
-        requested.add(it)
-        view.showLoading(it)
-      }
+      view = LoreViewTree(
+        "*.tmp\n",
+        listOf("src"),
+        { path ->
+          requested.add(path)
+          view.showLoading(path)
+        },
+        { ruleUpdates.add(view.rules()) },
+      )
       val tree = view.component as CheckboxTreeBase
       val folder = (tree.model.root as CheckedTreeNode).getChildAt(0) as CheckedTreeNode
       assertTrue(requested.isEmpty())
@@ -43,6 +49,8 @@ internal class LoreViewTreeTest {
         listener.keyPressed(KeyEvent(tree, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_SPACE, ' '))
       }
       assertEquals(listOf(LoreFolderSelection("src", true)), view.selections())
+      assertTrue(view.rules().contains("!/src/\n!/src/**\n"))
+      assertEquals(view.rules(), ruleUpdates.single())
       view.showFolders("src", listOf("src/nested"))
       assertTrue((folder.getChildAt(0) as CheckedTreeNode).isChecked)
       assertTrue(tree.isExpanded(TreePath(folder.path)))
@@ -53,6 +61,8 @@ internal class LoreViewTreeTest {
       assertEquals(listOf(LoreFolderSelection("", false)), view.selections())
       view.undoSelections()
       assertTrue(view.selections().isEmpty())
+      assertEquals("*.tmp\n", view.rules())
+      assertEquals("*.tmp\n", ruleUpdates.last())
       renderer.getTreeCellRendererComponent(tree, folder, true, false, false, 1, true)
       assertEquals(ThreeStateCheckBox.State.DONT_CARE, renderer.threeStateCheckBox.state)
     }

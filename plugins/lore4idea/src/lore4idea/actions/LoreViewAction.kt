@@ -13,6 +13,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.coroutines.childScope
+import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.bindSelected
@@ -42,11 +43,11 @@ internal class LoreViewAction(root: VirtualFile? = null) : LoreRepositoryAction(
       }
     }
     val owner = this
-    val selection = withContext(Dispatchers.EDT) {
+    val completed = withContext(Dispatchers.EDT) {
       if (project.isDisposed) return@withContext null
       val scope = owner.childScope("Lore view editor")
       lateinit var dialog: LoreViewDialog
-      dialog = LoreViewDialog(project, original, listing) { parent ->
+      dialog = LoreViewDialog(project, original, listing, { parent ->
         scope.launch(Dispatchers.EDT + ModalityState.current().asContextElement()) {
           try {
             val children = withContext(Dispatchers.IO) {
@@ -59,12 +60,24 @@ internal class LoreViewAction(root: VirtualFile? = null) : LoreRepositoryAction(
             if (!dialog.isDisposed) dialog.failed(parent, error.message.orEmpty())
           }
         }
+      }) { selections, apply ->
+        scope.launch(Dispatchers.EDT + ModalityState.current().asContextElement()) {
+          try {
+            withContext(Dispatchers.IO) {
+              repositories.withClient(root) { saveFolderSelections(listing.revision, selections, apply) }
+            }
+            if (!dialog.isDisposed) dialog.saved()
+          }
+          catch (error: Exception) {
+            rethrowControlFlowException(error)
+            if (!dialog.isDisposed) dialog.saveFailed(error.message.orEmpty())
+          }
+        }
       }
       Disposer.register(dialog.disposable) { scope.cancel() }
-      if (dialog.showAndGet()) dialog.selections() to dialog.applyView else null
+      dialog.showAndGet()
     } ?: return@coroutineScope false
-    repositories.withClient(root) { saveFolderSelections(listing.revision, selection.first, selection.second) }
-    true
+    completed
   }
 }
 
@@ -73,10 +86,13 @@ internal class LoreViewDialog(
   original: String,
   listing: LoreFolderListing,
   private val load: (String) -> Unit,
+  private val save: (List<LoreFolderSelection>, Boolean) -> Unit,
 ) : DialogWrapper(project) {
-  private val tree = LoreViewTree(original, listing.folders, ::request)
+  private val tree = LoreViewTree(original, listing.folders, ::request, ::updatePreview)
   private val loading = mutableSetOf<String>()
   private val failures = linkedMapOf<String, String>()
+  private lateinit var preview: JBTextArea
+  private var saving = false
   var applyView: Boolean = false
     private set
 
@@ -86,13 +102,11 @@ internal class LoreViewDialog(
     init()
   }
 
-  fun selections(): List<LoreFolderSelection> = tree.selections()
-
   private fun request(parent: String) {
     if (!loading.add(parent)) return
     failures.remove(parent)
     tree.showLoading(parent)
-    isOKActionEnabled = false
+    updateSaveAvailability()
     setErrorText(null)
     load(parent)
   }
@@ -100,7 +114,7 @@ internal class LoreViewDialog(
   fun loaded(parent: String, folders: List<String>) {
     loading.remove(parent)
     tree.showFolders(parent, folders)
-    isOKActionEnabled = loading.isEmpty()
+    updateSaveAvailability()
     setErrorText(failures.values.firstOrNull())
   }
 
@@ -109,7 +123,34 @@ internal class LoreViewDialog(
     failures[parent] = message
     tree.showFailure(parent)
     setErrorText(message)
-    isOKActionEnabled = loading.isEmpty()
+    updateSaveAvailability()
+  }
+
+  override fun doOKAction() {
+    if (saving || loading.isNotEmpty()) return
+    saving = true
+    updateSaveAvailability()
+    setErrorText(null)
+    save(tree.selections(), applyView)
+  }
+
+  fun saved() {
+    close(OK_EXIT_CODE)
+  }
+
+  fun saveFailed(message: String) {
+    saving = false
+    updateSaveAvailability()
+    setErrorText(message)
+  }
+
+  private fun updateSaveAvailability() {
+    isOKActionEnabled = loading.isEmpty() && !saving
+  }
+
+  private fun updatePreview() {
+    preview.text = tree.rules().ifEmpty { LoreBundle.message("dialog.view.preview.empty") }
+    preview.caretPosition = 0
   }
 
   override fun createCenterPanel() = panel {
@@ -123,8 +164,15 @@ internal class LoreViewDialog(
       scrollCell(tree.component).align(Align.FILL).focused()
         .label(LoreBundle.message("dialog.view.paths"), LabelPosition.TOP)
     }.resizableRow()
+    row(LoreBundle.message("dialog.view.preview")) {
+      preview = textArea().applyToComponent {
+        isEditable = false
+        lineWrap = false
+        rows = 4
+      }.component
+    }
     row { text(LoreBundle.message("dialog.view.selection.description")) }
     row { checkBox(LoreBundle.message("dialog.view.apply")).bindSelected(::applyView) }
     row { comment(LoreBundle.message("dialog.view.apply.description")) }
-  }
+  }.also { updatePreview() }
 }

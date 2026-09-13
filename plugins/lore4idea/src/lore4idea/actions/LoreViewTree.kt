@@ -20,7 +20,14 @@ import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 
-internal class LoreViewTree(private val original: String, folders: List<String>, private val load: (String) -> Unit) {
+internal class LoreViewTree(
+  private val original: String,
+  folders: List<String>,
+  private val load: (String) -> Unit,
+  private val rulesChanged: () -> Unit,
+) {
+  constructor(original: String, folders: List<String>, load: (String) -> Unit) : this(original, folders, load, {})
+
   private val root = CheckedTreeNode("")
   private val nodes = linkedMapOf("" to root)
   private val loaded = mutableSetOf("")
@@ -58,6 +65,7 @@ internal class LoreViewTree(private val original: String, folders: List<String>,
         val path = node.userObject as? String ?: return
         LoreFolderRules.select(changes, LoreFolderSelection(path, node.isChecked))
         updateStates()
+        rulesChanged()
       }
     })
     tree.addTreeWillExpandListener(object : TreeWillExpandListener {
@@ -75,14 +83,18 @@ internal class LoreViewTree(private val original: String, folders: List<String>,
 
   fun selections(): List<LoreFolderSelection> = changes.toList()
 
+  fun rules(): String = text
+
   fun selectAll(included: Boolean) {
     LoreFolderRules.select(changes, LoreFolderSelection("", included))
     updateStates()
+    rulesChanged()
   }
 
   fun undoSelections() {
     changes.clear()
     updateStates()
+    rulesChanged()
   }
 
   fun showFolders(parent: String, folders: List<String>) {
